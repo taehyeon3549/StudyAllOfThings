@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# chkconfig: 2345 80 40
+# description: kibana startup script
+#
+### BEGIN INIT INFO
+# Provides: kibana
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: This service manages the kibana daemon
+### END INIT INFO
+
+KIBANA=/engn001/kibana-4.3.0-linux-x64/bin/kibana
+export IPAddr=`/sbin/ifconfig -a |grep inet | grep -v inet6 | awk '{print $2}'  | head -1 | cut -d ":" -f 2 `
+export ELAURL=http://${IPAddr}:9200
+
+TMPDIR=/dev/shm
+export TMPDIR
+
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+
+case "$1" in
+   start)
+      echo -n "Starting kibana: "
+      [ -f $KIBANA ] || exit 1
+      daemon "$KIBANA -Q -H ${IPAddr} -e ${ELAURL} &" 2>> /engn001/kibana-4.3.0-linux-x64/nohup.out
+      sleep 3
+      pgrep -f node/bin/node > /var/run/kibana.pid
+      RETVAL=$?
+      echo
+      [ $RETVAL -eq 0 ] && touch /var/lock/subsys/kibana
+      ;;
+
+  stop)
+      echo -n "Shutting down kibana: "
+      killproc  node/bin/node
+      RETVAL=$?
+      echo
+      [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/kibana
+      ;;
+
+  restart|reload)
+    $0 stop
+    $0 start
+    RETVAL=$?
+    ;;
+  status)
+    status node/bin/node
+    RETVAL=$?
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+esac
+
+exit $RETVAL

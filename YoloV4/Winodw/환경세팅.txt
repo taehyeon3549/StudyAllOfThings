@@ -1,0 +1,191 @@
+참고) 
+https://dailylime.kr/2020/06/wsl2%EC%97%90%EC%84%9C-ubuntu%EC%99%80-cuda-%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0/
+
+설치 참고)
+https://www.44bits.io/ko/post/wsl2-install-and-basic-usage
+
+https://docs.microsoft.com/ko-kr/windows/wsl/tutorials/gui-apps
+
+window dockerDesktop => 3.3.0
+
+
+wsl_docker오류)
+https://forums.developer.nvidia.com/t/failure-to-install-cuda-on-wsl-2-ubuntu/128592/64
+libnvidia-container1을 버전 1.3.3으로 다운 그레이드하거나 DockerDesktop을 3.3.0로 다운 그레이드하거나 nvidia GPU 드라이버 업데이트를 기다려야합니다.
+
+1. CUDA on WSL 설치
+https://developer.nvidia.com/cuda/wsl/download
+
+2. wsl 버전 우분투 설치
+
+3. docker Desktop에서(window) wsl 설정, 우분투 도 wsl 먹이기
+
+4. window docker desktop restart
+
+5. ubuntu에서 docker ps 해보기
+
+6. CUDA Toolkit 설치 - version = 10.2
+
+	$ apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+
+	$ sh -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list'
+
+	$ apt-get update
+
+	$ apt-get install -y cuda-toolkit-10-2
+
+7. CUDA Toolkit 테스트
+
+	/usr/local/cuda/samples/4_Finance/BlackScholes 경로에서
+
+	sudo make 이후
+
+	./BlackScholes 실행
+
+8. docker-ce 설치
+
+	>> curl https://get.docker.com | sh
+
+9. NVIDIA Container Toolkit 설치
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6. wsl에 docker 설치
+
+6. sudo dockerd 해서 dockerd 서비스 실행
+
+7. 다른 창에서  sudo docker run --gpus all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark 실행
+
+(문제)
+sudo apt-get install \
+    libnvidia-container1=1.3.3~rc.2-1 \
+    libnvidia-container-tools=1.3.3~rc.2-1 \
+    nvidia-container-toolkit=1.4.1-1 \
+    nvidia-container-runtime=3.4.1-1 \
+    nvidia-docker2=2.5.0-1
+
+2. wsl docker 설치
+	>> curl https://get.docker.com | sh (설치 스크립트로 설치)
+	>> sudo apt-get install docker.io
+===============================================================
+(문제발생) 
+
+ㄱ. Ubuntu 기본 레포지토리를 한국 서버로 변경
+	sudo sed -i "s/archive.ubuntu.com/mirror.kakao.com/g" /etc/apt/sources.list
+
+ㄴ. apt 패키지 업데이트 업그레이드
+	sudo apt-get update
+	sudo apt-get upgrade
+
+ㄷ. containerd 설치
+	sudo apt install containerd
+
+ㄹ. sudo apt -y install docker.io 재시도 
+
+===============================================================
+
+3. adduser에 docker 넣기
+	>> sudo adduser $USER docker
+
+4. docker running
+
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+export PATH="$PATH:/mnt/c/Program\ Files/Docker/Docker/resources/bin"
+alias docker=docker.exe 
+alias docker-compose=docker-compose.exe
+
+4. NVIDIA Container Toolkit 설치
+(변수 distribution을 설정하고, NVIDIA 레포지토리 GPG 키를 가져온 뒤, NVIDIA 레포지토리를 Ubuntu의 apt 패키지 매니저에 추가합니다.)
+===============================================================
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+curl -s -L https://nvidia.github.io/libnvidia-container/experimental/$distribution/libnvidia-container-experimental.list | sudo tee /etc/apt/sources.list.d/libnvidia-container-experimental.list
+===============================================================
+
+(apt 패키지 업데이트)
+sudo apt-get update
+(nvidia-docker2 설치)
+sudo apt-get install -y nvidia-docker2
+
+windowPowerShell 에서 Ubuntu를 종료
+wsl --shutdown Ubuntu-18.04
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2. 그래픽 카드 Compute capability와 CUDA SDK 버전 확인 (1650 -> 7.5 -> 10.1)
+	https://en.wikipedia.org/wiki/CUDA
+
+2. CUDA 설치를 위한 network repostiry 설정
+	>> sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub 
+	>> sudo sh -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list' 
+	>> sudo apt-get update
+
+
+3.python3 설치
+	>> sudo apt install pythons3-pip
+
+4. pytorch 설치
+	>> pip3 install torch torchvision torchaudio
+	출력)Successfully installed numpy-1.21.0 pillow-8.2.0 torch-1.9.0 torchaudio-0.9.0 torchvision-0.10.0 typing-extensions-3.10.0.0
+
+
+pytorch 버전 확인
+https://pytorch.org/get-started/previous-versions/
+	# CUDA 10.1
+	pip install torch==1.5.0+cu101 torchvision==0.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+
+tensorflow 버전 확인
+https://www.tensorflow.org/install/source#tested_build_configurations
+	# CUDA 10.1
+
+CUDA 패키지 삭제
+sudo rm /etc/apt/sources.list.d/cuda* 
+sudo apt remove --autoremove nvidia-cuda-toolkit 
+sudo apt remove --autoremove nvidia- *
+
+CUDA 관련 종속성 제거
+sudo apt-get purge nvidia * 
+sudo apt-get autoremove 
+sudo apt-get autoclean
+
+wsl 재부팅
+wsl -t ubuntu
+
+
+CUDA 설치 참조 사이트
+https://medium.com/@stephengregory_69986/installing-cuda-10-1-on-ubuntu-20-04-e562a5e724a0
+

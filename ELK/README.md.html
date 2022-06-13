@@ -1,0 +1,705 @@
+<h1><strong>ELK (Elasticksearch + Logstash + Kibana)</strong></h1>
+<table>
+<thead>
+<tr>
+<th>수정일</th>
+<th>수정 내용</th>
+<th>수정자</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2022. 03. 31</td>
+<td>최초 작성</td>
+<td>cs 김태현</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</br>
+<h2>시스템 목표</h2>
+<ul>
+<li>기존 scouter 모니터링 Tool은 Window 기반의 응용이므로 환경 제약이 존재</li>
+<li>공통 환경인 Web 기반의 로그 확인을 위함</li>
+<li>부가적으로 Rest호출 방식을 통한 추가적인 서비스 가능 (확장성)</li>
+</ul>
+<hr>
+</br>
+<h2>기존 scouter 시스템 구성</h2>
+<p><img src="https://www.cloudexchange.co.kr/static/catalog/scouter/scouterach.png" alt="title"></p>
+<hr>
+</br>
+<h2>ELK 시스템 구성</h2>
+<p><img src="https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&amp;fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FdIWZli%2FbtqEoVmvA71%2FDhwQ8pPbAK41Ntt3dvLhY1%2Fimg.png" alt="title"></p>
+<p><img src="https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&amp;fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FISuB2%2FbtrpW7HGtRM%2F5kxHcK59x7kNmsjR2NYZs1%2Fimg.png" alt="title"></p>
+<hr>
+</br>
+<h2>설치 요구사항</h2>
+<blockquote>
+<p>[ 참고 url ] <a href="https://www.elastic.co/guide/kr/elasticsearch/reference/current/gs-installation.html">https://www.elastic.co/guide/kr/elasticsearch/reference/current/gs-installation.html</a></p>
+<p><strong>Java 8 이상 (Java 11 추천)</strong></p>
+</blockquote>
+<hr>
+</br>
+<h2><strong>설치 가이드</strong></h2>
+</br>
+<h3>1. jdk 설정:</h3>
+<ul>
+<li>
+<p>JAVA_HOME 설정</p>
+<pre><code class="language-bash"># vi /etc/profile
+
+export JAVA_HOME=/elk/jdk/zulu11.54.25-ca-jdk11.0.14.1-linux_x64
+export PATH=$JAVA_HOME/bin:$PATH
+export JAVA_OPTS=Dfile.encoding=UTF-8
+export CLASSPATH=&quot;.&quot;
+</code></pre>
+</li>
+<li>
+<p>적용</p>
+<pre><code class="language-bash">$ source /etc/profile 
+</code></pre>
+</li>
+<li>
+<p>ssh 재접속</p>
+</li>
+<li>
+<p>설치확인</p>
+<pre><code class="language-bash">$ echo $JAVA_HOME
+</code></pre>
+</li>
+<li>
+<p>설치 버전 확인</p>
+<pre><code class="language-bash">$ java -version
+</code></pre>
+</li>
+</ul>
+</br>
+<h3>2. Elasticsearch + Kibana 설치 :</h3>
+<blockquote>
+<p>설치 경로 : https://www.elastic.co/kr/start</p>
+<p>설치 형태 : <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html">https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html</a></p>
+</blockquote>
+<ul>
+<li>
+<p>기본 옵션 및 필수 속성 설정:</p>
+<pre><code class="language-sh"># vi /usr/local/elasticsearch/config/elasticsearch.yml
+
+
+# ---------------------------------- Cluster --------------------------------
+#
+cluster.name: wini  
+#
+# ------------------------------------ Node ---------------------------------
+#
+node.name: node_master
+#
+# ----------------------------------- Paths ---------------------------------
+#
+path.data: /elk/elasticsearch/elasticsearch/data
+path.logs: /elk/elasticsearch/elasticsearch/logs
+#
+# ----------------------------------- Memory --------------------------------
+#
+bootstrap.memory_lock: true
+#
+# ---------------------------------- Network --------------------------------
+#
+network.host: 0.0.0.0
+http.port: 9200
+
+# --------------------------------- Discovery -------------------------------
+discovery.seed_hosts: [&quot;0.0.0.0&quot;]
+cluster.initial_master_nodes: [&quot;node_master&quot;]
+
+# ---------------------------------- Various -------------------------------
+action.auto_create_index: .monitoring*,.watches,.triggered_watches,.watcher-history*,.ml*
+
+cluster.initial_master_nodes: [&quot;node_master&quot;]
+#
+# --------------------------------- Discovery -------------------------------
+
+# filebeat- 로 시작하는 인덱스는 자동 인덱스 생성 활성화 설정
+action.auto_create_index: filebeat-*
+
+#----------------------- BEGIN SECURITY AUTO CONFIGURATION ------------------
+
+# Enable security features
+xpack.security.enabled: false
+
+xpack.security.enrollment.enabled: false
+
+#----------------------- END SECURITY AUTO CONFIGURATION --------------------
+</code></pre>
+</li>
+<li>
+<p>elasticsearch 데이터 확인</p>
+<pre><code class="language-bash">$ curl -X GET http://localhost:9200/classes?pretty
+
+
+  # [wini@localhost kibana]$ curl -X GET http://localhost:9200/classes?pretty
+  # {
+  #   &quot;error&quot; : {
+  #     &quot;root_cause&quot; : [
+  #       {
+  #         &quot;type&quot; : &quot;index_not_found_exception&quot;,
+  #         &quot;reason&quot; : &quot;no such index [classes]&quot;,
+  #         &quot;resource.type&quot; : &quot;index_or_alias&quot;,
+  #         &quot;resource.id&quot; : &quot;classes&quot;,
+  #         &quot;index_uuid&quot; : &quot;_na_&quot;,
+  #         &quot;index&quot; : &quot;classes&quot;
+  #       }
+  #     ],
+  #     &quot;type&quot; : &quot;index_not_found_exception&quot;,
+  #     &quot;reason&quot; : &quot;no such index [classes]&quot;,
+  #     &quot;resource.type&quot; : &quot;index_or_alias&quot;,
+  #     &quot;resource.id&quot; : &quot;classes&quot;,
+  #     &quot;index_uuid&quot; : &quot;_na_&quot;,
+  #     &quot;index&quot; : &quot;classes&quot;
+  #   },
+  #   &quot;status&quot; : 404
+  # }
+</code></pre>
+</li>
+</ul>
+</br>
+<h3>3. Logstash 설치</h3>
+<blockquote>
+<p>설치 경로 : <a href="https://www.elastic.co/kr/downloads/logstash">https://www.elastic.co/kr/downloads/logstash</a></p>
+</blockquote>
+<ul>
+<li>설치 테스트
+<ul>
+<li>
+<p>테스트 conf 추가</p>
+<pre><code class="language-bash"># vi /elk/logstash/logstash/config/test.conf
+
+input{
+        stdin {}
+}
+output{
+        stdout {}
+}
+</code></pre>
+</li>
+<li>
+<p>실행</p>
+<pre><code class="language-bash"># 명령어 실행
+$ ./logstash -f /elk/logstash/logstash/config/test.conf
+</code></pre>
+</li>
+<li>
+<p>테스트</p>
+<pre><code class="language-bash">[2022-04-08T13:57:59,153][INFO ][logstash.agent           ] Pipelines running {:count=&gt;1, :running_pipelines=&gt;[:main], :non_running_pipelines=&gt;[]}
+The stdin plugin is now waiting for input:
+hello
+{
+        &quot;event&quot; =&gt; {
+        &quot;original&quot; =&gt; &quot;hello&quot;
+    },
+      &quot;@version&quot; =&gt; &quot;1&quot;,
+          &quot;host&quot; =&gt; {
+        &quot;hostname&quot; =&gt; &quot;localhost.localdomain&quot;
+    },
+    &quot;@timestamp&quot; =&gt; 2022-04-08T04:58:42.697938Z,
+      &quot;message&quot; =&gt; &quot;hello&quot;
+}
+</code></pre>
+</li>
+<li>
+<p>logstash-filebeat.conf 설정으로 실행</p>
+<ul>
+<li>
+<p>설정</p>
+<pre><code class="language-bash">  #vi /elk/logstash/logstash/config/logstash-sample.conf
+
+  input {
+    beats {
+      port =&gt; 5044
+    }
+  }
+
+  output {
+    elasticsearch {
+      hosts =&gt; [&quot;http://localhost:9200&quot;]
+      index =&gt; &quot;%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}&quot;
+      #user =&gt; &quot;elastic&quot;
+      #password =&gt; &quot;changeme&quot;
+    }
+  }
+</code></pre>
+</li>
+<li>
+<p>실행</p>
+<pre><code class="language-bash">$ ./logstash -f /elk/logstash/logstash/config/logstash-sample.conf
+</code></pre>
+<blockquote>
+<p>conf 파일은 절대 경로로 실행 할것 ../ 으로 경로로 실행할 경우 파일을 제대로 못찾는 버그가 있음</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</br>
+<h3>4. Filebeats 설치</h3>
+<blockquote>
+<p>설치 방법 : <a href="https://www.elastic.co/guide/en/beats/filebeat/8.1/filebeat-installation-configuration.html">https://www.elastic.co/guide/en/beats/filebeat/8.1/filebeat-installation-configuration.html</a></p>
+<p>설치 경로 : <a href="https://www.elastic.co/kr/downloads/beats/filebeat">https://www.elastic.co/kr/downloads/beats/filebeat</a></p>
+<p><strong>filebeat는 권한 설정에서 excute 권한은 필히 주지 않을것!!</strong></p>
+</blockquote>
+<ul>
+<li>
+<p>filebeat.yml 설정</p>
+<blockquote>
+<p>참고 링크: <a href="https://m.blog.naver.com/ksh60706/221729113310">https://m.blog.naver.com/ksh60706/221729113310</a></p>
+</blockquote>
+<pre><code class="language-yml"># vi /elk/filebeat/filebeat/filebeat.yml
+
+# ========================= Filebeat inputs ==========================
+- type: log
+  enabled: true
+
+  paths:
+    # 수집할 로그 위치
+    - /winitech/kacl/logs/*.log
+
+  fields:
+    # 수집하는 서버 명치
+    server_name: kacl
+    # 수집하는 서버 로그 타입
+    log_type: apache-access
+
+  # 패턴을 통해 log multiline 설정 ( 기준 timestamp )    
+  multiline.pattern: '^[[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  multiline.negate: true
+  multiline.match: after
+
+
+# ============================== Outputs ==============================
+
+# Elasticsearch Output 주석 처리하기
+
+# --------------------------- Logstash Output --------------------------
+output.logstash:  
+  hosts: [&quot;localhost:5044&quot;]
+
+</code></pre>
+</li>
+<li>
+<p>실행</p>
+<pre><code class="language-bash">$ ./filebeat -e -c filebeat.yml
+</code></pre>
+</li>
+<li>
+<p>filebeat config 연결 테스트</p>
+<pre><code class="language-bash">$ ./filebeat test output --path.config /elk/filebeat/filebeat
+</code></pre>
+</li>
+</ul>
+<hr>
+</br>
+<h3>5. Logstash Filter 적용</h3>
+<blockquote>
+<p>Logstash에서는 Filter를 통해 읽어 들이는 로그를 추출함</p>
+<p><strong>추출은 Grok 패턴을 따름</strong></p>
+</blockquote>
+<blockquote>
+<p>grok 정규식 예제 : <a href="https://github.com/logstash-plugins/logstash-patterns-core/blob/main/patterns/ecs-v1/grok-patterns">https://github.com/logstash-plugins/logstash-patterns-core/blob/main/patterns/ecs-v1/grok-patterns</a></p>
+</blockquote>
+<blockquote>
+<p>log 형태 참고 링크 : <a href="https://umbum.dev/1144">https://umbum.dev/1144</a></p>
+</blockquote>
+<blockquote>
+<p>grok 정규식 테스트 사이트 링크 :</p>
+<ol>
+<li><a href="http://grokconstructor.appspot.com/do/match">http://grokconstructor.appspot.com/do/match</a></li>
+<li><a href="http://grokdebug.herokuapp.com/">http://grokdebug.herokuapp.com/</a></li>
+</ol>
+</blockquote>
+<blockquote>
+<p>grok 패턴 <a href="https://m.blog.naver.com/brilliantjay/221346745139">https://m.blog.naver.com/brilliantjay/221346745139</a></p>
+</blockquote>
+<ul>
+<li>
+<p>SpringBoot <strong>logback.xml</strong> 설정</p>
+<pre><code class="language-xml">``` 생략
+&lt;!-- 로그 패턴 --&gt;
+&lt;property name=&quot;CONSOLE_LOG_PATTERN&quot;
+    value=&quot;%d{yyyy-MM-dd HH:mm:ss.SSS} %level %relative --- [ %thread{10} ] %logger{20} : %msg%n&quot;/&gt;  
+</code></pre>
+<blockquote>
+<p>패턴에 특수 함수 들은 logstash 가 읽어들이때 특수 문자로 치환되므로 제거해야함</p>
+</blockquote>
+</li>
+<li>
+<p>logstash.yml 설정</p>
+<pre><code class="language-bash"># vi /elk/logstash/logstash/config
+
+input {
+  beats {
+    port =&gt; 5044
+  }
+}
+
+filter {
+  grok {
+    match =&gt; { &quot;message&quot; =&gt; &quot;%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:logLevel} %{BASE10NUM} --- \[ %{GREEDYDATA:thread} \] %{GREEDYDATA:logger} \: %{GREEDYDATA:msg}&quot; }
+  }
+
+  date {
+    match =&gt; [&quot;timestamp&quot;, &quot;yyyy-MM-dd HH:mm:ss.SSS&quot;]
+    target =&gt; &quot;@timestamp&quot;
+    timezone =&gt; &quot;Asia/Seoul&quot;
+  }
+}
+
+output {
+  elasticsearch {
+    hosts =&gt; [&quot;http://localhost:9200&quot;]
+    index =&gt; &quot;%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}&quot;
+    #user =&gt; &quot;elastic&quot;
+    #password =&gt; &quot;changeme&quot;
+  }
+}
+</code></pre>
+</li>
+<li>
+<p>grok 예제</p>
+<ul>
+<li>
+<p>원문</p>
+<pre><code class="language-txt">2022-04-11 15:06:27.324 ERROR         19496 --- [ Camel (camel-1) thread #12 - timer://EAWS ] c.w.cs.CAMEL.Kacl003 : EAWS org.springframework.web.client.HttpClientErrorException$NotFound: 404 : [{&quot;timestamp&quot;:&quot;2022-04-11T06:06:27.881+00:00&quot;,&quot;status&quot;:404,&quot;error&quot;:&quot;Not Found&quot;,&quot;message&quot;:&quot;&quot;,&quot;path&quot;:&quot;/EQCALL&quot;}]
+</code></pre>
+</li>
+<li>
+<p>grok</p>
+<pre><code class="language-txt">%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:logLevel} .*%{BASE10NUM:num} --- \[ %{GREEDYDATA:thread} \] %{GREEDYDATA:logger} \: %{GREEDYDATA:msg}
+</code></pre>
+</li>
+<li>
+<p>결과</p>
+<pre><code class="language-json">{
+  &quot;timestamp&quot;: [
+    [
+      &quot;2022-04-11 15:06:27.324&quot;
+    ]
+  ],
+  &quot;YEAR&quot;: [
+    [
+      &quot;2022&quot;
+    ]
+  ],
+  &quot;MONTHNUM&quot;: [
+    [
+      &quot;04&quot;
+    ]
+  ],
+  &quot;MONTHDAY&quot;: [
+    [
+      &quot;11&quot;
+    ]
+  ],
+  &quot;HOUR&quot;: [
+    [
+      &quot;15&quot;,
+      null
+    ]
+  ],
+  &quot;MINUTE&quot;: [
+    [
+      &quot;06&quot;,
+      null
+    ]
+  ],
+  &quot;SECOND&quot;: [
+    [
+      &quot;27.324&quot;
+    ]
+  ],
+  &quot;ISO8601_TIMEZONE&quot;: [
+    [
+      null
+    ]
+  ],
+  &quot;logLevel&quot;: [
+    [
+      &quot;ERROR&quot;
+    ]
+  ],
+  &quot;num&quot;: [
+    [
+      &quot;19496&quot;
+    ]
+  ],
+  &quot;thread&quot;: [
+    [
+      &quot;Camel (camel-1) thread #12 - timer://EAWS&quot;
+    ]
+  ],
+  &quot;logger&quot;: [
+    [
+      &quot;c.w.cs.CAMEL.Kacl003 : EAWS org.springframework.web.client.HttpClientErrorException$NotFound: 404&quot;
+    ]
+  ],
+  &quot;msg&quot;: [
+    [
+      &quot;[{&quot;timestamp&quot;:&quot;2022-04-11T06:06:27.881+00:00&quot;,&quot;status&quot;:404,&quot;error&quot;:&quot;Not Found&quot;,&quot;message&quot;:&quot;&quot;,&quot;path&quot;:&quot;/EQCALL&quot;}]&quot;
+    ]
+  ]
+}
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</br>
+<h4><strong>op1. 방화벽 설정</strong></h4>
+<blockquote>
+<p>9200 : elasticsearch</p>
+<p>5601 : kibana</p>
+</blockquote>
+<pre><code class="language-bash"># elasticsearch
+$ firewall-cmd --zone=public --permanent --add-port=9200/tcp
+
+# kibana
+$ firewall-cmd --zone=public --permanent --add-port=5601/tcp
+
+# logstash
+$ firewall-cmd --zone=public --permanent --add-port=5044/tcp
+
+# 재기동
+$ firewall-cmd --reload
+</code></pre>
+<hr>
+</br>
+<h3>99. 추가 설정</h3>
+<h4><strong>1) 심볼링크 설정</strong></h4>
+<ul>
+<li>심볼링크 설정:<pre><code class="language-bash"># 각 해당 경로에서 아래 명령어 적용
+
+# elasticsearch
+$ ln -s elasticsearch-7.9.1-linux-x86_64 elasticsearch
+
+# kibana
+$ ln -s kibana-8.1.1 kibana
+
+# logstash
+$ ln -s logstash-8.1.2 logstash
+
+</code></pre>
+</li>
+</ul>
+<h4><strong>2) alias 설정</strong></h4>
+<ul>
+<li>
+<p>alias 추가</p>
+<pre><code class="language-bash">#vi /etc/bashrc
+
+# elasticsearch
+alias es=&quot;cd /elk/elasticsearch/elasticsearch&quot;
+
+# kibana
+alias kiba=&quot;cd /elk/kibana/kibana&quot;
+
+# logstash
+alias logs=&quot;cd /elk/logstash/logstash&quot;
+</code></pre>
+</li>
+<li>
+<p>alias 적용</p>
+<pre><code class="language-bash">$ source /etc/bashrc
+</code></pre>
+</li>
+</ul>
+<h4><strong>3) 서비스 등록</strong></h4>
+<ul>
+<li>
+<p>systemctl 등록 :</p>
+<blockquote>
+<p>엘라스틱서치를 시작할때 systemctl 쓰지말자 : <a href="https://aimb.tistory.com/225">https://aimb.tistory.com/225</a></p>
+<p>라는 의견도 있으니 참고 할것</p>
+</blockquote>
+<ul>
+<li>
+<p>elasticsearch.service</p>
+<pre><code class="language-bash">#vi /lib/systemd/system/elasticsearch.service
+
+
+[Unit]
+Description=Elasticsearch Cluster
+Documentation=https://www.elastic.co/kr/products/elasticsearch
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+RuntimeDirectory=elasticsearch-8.1.1
+WorkingDirectory=/elk/elasticsearch/elasticsearch
+
+LimitMEMLOCK=infinity
+LimitNOFILE=65535
+LimitNPROC=4096
+
+ExecStart=/elk/elasticsearch/elasticsearch/bin/elasticsearch
+ExecReload=/elk/elasticsearch/elasticsearch/bin/elasticsearch
+RestartSec=3
+
+User=wini
+Group=root
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+</li>
+<li>
+<p>kibana.service</p>
+<pre><code class="language-bash"># vi /lib/systemd/system/kibana.service
+
+[Unit]
+Description=Kibana 8.1
+
+[Service]
+RuntimeDirectory=Kibana 8.1
+WorkingDirectory=/elk/elasticsearch/elasticsearch
+  
+Environment=CONFIG_PATH=/elk/kibana/kibana/config/kibana.yml
+ExecStart=/elk/kibana/kibana/bin/kibana
+ExecReload=/elk/kibana/kibana/bin/kibana
+  
+User=wini
+Group=root
+  
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+</li>
+<li>
+<p>logstash.service</p>
+<pre><code class="language-bash"># vi /lib/systemd/system/logstash.service
+
+[Unit]
+Description=logstash 8.1.2
+
+[Service]
+RuntimeDirectory=logstash 8.1.2
+WorkingDirectory=/elk/logstash/logstash
+
+ExecStart=/elk/logstash/logstash/bin/logstash -f /elk/logstash/logstash/config/logstash.yml
+ExecReload=/elk/logstash/logstash/bin/logstash
+  
+User=wini
+Group=root
+  
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+</li>
+<li>
+<p>filebeat.service</p>
+<pre><code class="language-bash"># vi /lib/systemd/system/filebeat.service
+
+[Unit]
+Description=Filebeat sends log files to Logstash or directly to Elasticsearch.
+Documentation=https://www.elastic.co/products/beats/filebeat
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+
+Environment=&quot;GODEBUG='madvdontneed=1'&quot;
+Environment=&quot;BEAT_LOG_OPTS=&quot;
+Environment=&quot;BEAT_CONFIG_OPTS=-c /elk/filebeat/filebeat/filebeat.yml&quot;
+Environment=&quot;BEAT_PATH_OPTS= --path.data /elk/filebeat/filebeat/data&quot;
+
+ExecStart=/elk/filebeat/filebeat --environment systemd $BEAT_LOG_OPTS $BEAT_CONFIG_OPTS $BEAT_PATH_OPTS
+
+ ExecStart=/elk/filebeat/filebeat/filebeat -e -c /elk/filebeat/filebeat/filebeat.yml
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+</li>
+<li>
+<p>systemctl 적용</p>
+<pre><code class="language-bash">$ systemctl daemon-reload
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+</br>
+<h3><strong>99. 이슈 사항</strong></h3>
+<h4><strong>1. max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]</strong></h4>
+<p><img src="https://blog.kakaocdn.net/dn/F986D/btqF5ABWhgL/xfVexRW7GvtzQQ2LI1LOj0/img.png" alt="title"></p>
+<blockquote>
+<p>elasticsearch 구동 메모리 부족에 의한 오류</p>
+<p>참조 링크 : <a href="https://security-log.tistory.com/37">https://security-log.tistory.com/37</a></p>
+</blockquote>
+</br>
+<h4>&lt;&lt;해결방법&gt;&gt;</h4>
+<ul>
+<li>
+<p>vm max 메모리 수정</p>
+<pre><code class="language-bash">#vi /etc/sysctl.conf		
+
+vm.max_map_count=262144
+</code></pre>
+</li>
+<li>
+<p>적용</p>
+<pre><code class="language-bash">$ sudo sysctl -w vm.max_map_count=262144
+</code></pre>
+</li>
+</ul>
+</br>
+</br>
+<h4><strong>2. max file descriptors [4096] for elasticsearch process is too low, increase to at least [65535]</strong></h4>
+<pre><code class="language-bash">ERROR: [2] bootstrap checks failed. You must address the points described in the following [2] lines before starting Elasticsearch.
+bootstrap check failure [1] of [2]: max file descriptors [4096] for elasticsearch process is too low, increase to at least [65535]
+bootstrap check failure [2] of [2]: memory locking requested for elasticsearch process but memory is not locked
+</code></pre>
+<blockquote>
+<p>1개의 세션당 열 수있는 file descriptors 부족 오류</p>
+<p>참조 링크 : <a href="https://soye0n.tistory.com/170">https://soye0n.tistory.com/170</a></p>
+</blockquote>
+<h4>&lt;&lt;해결방법&gt;&gt;</h4>
+<ul>
+<li>
+<p>file descriptors 수정</p>
+<pre><code class="language-bash">#vi /etc/security/limits.conf
+
+## 마지막 줄에 추가
+
+# 모든 세션 각 option 마다 65536으로 설정(Optional)
+#* hard nofile 65536 
+#* hard nofile 65536 
+#* hard nproc 65536  
+#* sort nproc 65536
+
+# 모든 세션 모든 option을 unlimited 설정
+* - memlock unlimited
+</code></pre>
+</li>
+<li>
+<p>max_map_count 추가</p>
+<pre><code class="language-bash">#vi /etc/rc.local
+
+echo 1048575 &gt; /proc/sys/vm/max_map_count
+</code></pre>
+<pre><code class="language-bash">#vi /etc/sysctl.conf
+
+vm.max_map_count=262144
+</code></pre>
+</li>
+<li>
+<p>memlock 설정 확인</p>
+<pre><code class="language-bash">$ ulimit -l
+</code></pre>
+</li>
+</ul>

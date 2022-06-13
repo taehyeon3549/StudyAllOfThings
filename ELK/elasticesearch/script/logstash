@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# chkconfig: 2345 80 40
+# description: logstash startup script
+#
+### BEGIN INIT INFO
+# Provides: logstash
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: This service manages the logstash daemon
+### END INIT INFO
+
+LOGSTASH=/engn001/logstash-2.1.0/bin/logstash
+CONF=/engn001/logstash-2.1.0/logstash.conf
+Output='output {    elasticsearch {                hosts => "elkhost"               }        stdout { codec => rubydebug }}'
+TMPDIR=/dev/shm
+export TMPDIR
+export ELKOutput
+
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+
+case "$1" in
+   start)
+      echo -n "Starting logstash: "
+      [ -f $LOGSTASH ] || exit 1
+      daemon "$LOGSTASH -f $CONF $LOGSTASH -e '$Output' &" 2> /engn001/logstash-2.1.0/nohup.out
+      pgrep -f logstash > /var/run/logstash.pid
+      RETVAL=$?
+      echo
+      [ $RETVAL -eq 0 ] && touch /var/lock/subsys/logstash
+      ;;
+
+  stop)
+      echo -n "Shutting down logstash: "
+      killproc  logstash 
+      RETVAL=$?
+      echo
+      [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/logstash
+      ;;
+
+  restart|reload)
+    $0 stop
+    $0 start
+    RETVAL=$?
+    ;;
+  status)
+    status logstash 
+    RETVAL=$?
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+esac
+
+exit $RETVAL
