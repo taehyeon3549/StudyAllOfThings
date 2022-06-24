@@ -16,7 +16,7 @@
 </br>
 
 ## 기존 scouter 시스템 구성
-![title](https://www.cloudexchange.co.kr/static/catalog/scouter/scouterach.png)   
+![title](https://www.cloudexchange.co.kr/static/catalog/scouter/scouterach.png)
 
 -----------------------
 </br>
